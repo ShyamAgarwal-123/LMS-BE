@@ -34,10 +34,16 @@ const userSchema = new Schema(
       default:
         "https://t4.ftcdn.net/jpg/02/15/84/43/360_F_215844325_ttX9YiIIyeaR7Ne6EaLLjMAmy4GvPC69.jpg",
     },
+    profileImage_id: {
+      type: String,
+    },
     coverImage: {
       type: String,
       default:
         "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcQyQGf3A22wgLiZ-cxPzCfFmaI2WEtv9JMaLA&s",
+    },
+    coverImage_id: {
+      type: String,
     },
     refreshToken: {
       type: String,
@@ -46,7 +52,7 @@ const userSchema = new Schema(
   { timestamps: true }
 );
 
-userSchema.pre("save", async (next) => {
+userSchema.pre("save", async function (next) {
   if (!this.isModified("password")) return next();
 
   this.password = await bcrypt.hash(this.password, 10);
@@ -82,4 +88,6 @@ userSchema.method.generateRefreshToken = () => {
   );
 };
 
-export default User = mongoose.model("User", userSchema);
+const User = mongoose.model("User", userSchema);
+
+export default User;

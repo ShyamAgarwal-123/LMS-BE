@@ -23,7 +23,7 @@ const adminSchema = new Schema(
       type: String,
       required: [true, "Password is Required"],
     },
-    purchasedCourses: [
+    myCourses: [
       {
         type: Schema.Types.ObjectId,
         ref: "Course",
@@ -34,10 +34,16 @@ const adminSchema = new Schema(
       default:
         "https://t4.ftcdn.net/jpg/02/15/84/43/360_F_215844325_ttX9YiIIyeaR7Ne6EaLLjMAmy4GvPC69.jpg",
     },
+    profileImage_id: {
+      type: String,
+    },
     coverImage: {
       type: String,
       default:
         "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcQyQGf3A22wgLiZ-cxPzCfFmaI2WEtv9JMaLA&s",
+    },
+    coverImage_id: {
+      type: String,
     },
     refreshToken: {
       type: String,

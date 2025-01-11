@@ -7,11 +7,29 @@ cloudinary.config({
   api_secret: process.env.CLOUDINARY_SECRET,
 });
 
-async function uploadOnCloudinary(filePath) {
+async function uploadImageOnCloudinary(filePath, folderPath) {
   try {
     if (!filePath) return null;
     const response = await cloudinary.uploader.upload(filePath, {
-      resource_type: "auto",
+      resource_type: "Image",
+      folder: folderPath,
+    });
+    if (!response) throw new Error("Unable to Upload File in Cloudinary");
+    fs.unlink(filePath);
+    return response;
+  } catch (error) {
+    fs.unlink(filePath);
+    console.log(error.message);
+    return null;
+  }
+}
+
+async function uploadVideoOnCloudinary(filePath, folderPath) {
+  try {
+    if (!filePath) return null;
+    const response = await cloudinary.uploader.upload_large(filePath, {
+      resource_type: "video",
+      folder: folderPath,
     });
     if (!response) throw new Error("Unable to Upload File in Cloudinary");
     fs.unlink(filePath);
@@ -54,7 +72,8 @@ async function deleteVideoFromCloudinary(publicid) {
 }
 
 export {
-  uploadOnCloudinary,
+  uploadImageOnCloudinary,
+  uploadVideoOnCloudinary,
   deleteImageFromCloudinary,
   deleteVideoFromCloudinary,
 };

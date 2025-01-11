@@ -11,8 +11,8 @@ dbConnect()
       console.log("App Error: ", err);
       process.exit(1);
     });
-    app.listen(() => {
-      console.log(`Application is Listining At Port: ${process.env.PORT}`);
+    app.listen(process.env.PORT, () => {
+      console.log(`Application is Listining At Port:${process.env.PORT}`);
     });
   })
   .catch((err) => {

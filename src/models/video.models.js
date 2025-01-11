@@ -10,7 +10,9 @@ const videoSchema = new Schema({
     default:
       "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcQldv1SEwqRB3Yr6JNklf6cSiRbQC_Bk0pkaQ&s",
   },
-
+  thumbnail_id: {
+    type: String,
+  },
   title: {
     type: String,
     index: true,
@@ -25,11 +27,7 @@ const videoSchema = new Schema({
     },
   ],
 
-  notes: [
-    {
-      type: String,
-    },
-  ],
+  notes: [{}],
 });
 
 export default Video = mongoose.model("Video", videoSchema);
