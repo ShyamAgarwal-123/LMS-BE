@@ -4,7 +4,7 @@ import jwt from "jsonwebtoken";
 
 const adminSchema = new Schema(
   {
-    Adminname: {
+    adminname: {
       type: String,
       required: [true, "Admin name is Required"],
       trim: true,
@@ -52,31 +52,30 @@ const adminSchema = new Schema(
   { timestamps: true }
 );
 
-adminSchema.pre("save", async (next) => {
+adminSchema.pre("save", async function (next) {
   if (!this.isModified("password")) return next();
 
   this.password = await bcrypt.hash(this.password, 10);
   next();
 });
 
-adminSchema.method.isPasswordCoreect = async (password) => {
+adminSchema.methods.isPasswordCorrect = async function (password) {
   return await bcrypt.compare(password, this.password);
 };
 
-adminSchema.method.generateAccessToken = () => {
+adminSchema.methods.generateAccessToken = function () {
   return jwt.sign(
     {
       _id: this._id,
     },
     process.env.JWT_ACCESS_SECRET,
     {
-      algorithm: "ES256",
       expiresIn: "10min",
     }
   );
 };
 
-adminSchema.method.generateRefreshToken = () => {
+adminSchema.methods.generateRefreshToken = function () {
   return jwt.sign(
     {
       _id: this._id,
@@ -87,5 +86,5 @@ adminSchema.method.generateRefreshToken = () => {
     }
   );
 };
-
-export default Admin = mongoose.model("Admin", adminSchema);
+const Admin = mongoose.model("Admin", adminSchema);
+export default Admin;

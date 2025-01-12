@@ -1,9 +1,9 @@
-import User from "../models/user.models.js";
+import Admin from "../models/admin.model.js";
 import signUpSchema from "../schemas/signin.schemas.js";
-import signInSchema from "../schemas/signup.schemas.js";
 import ApiError from "../utils/ApiError.js";
 import ApiResponse from "../utils/ApiResponse.js";
 import asyncHandler from "../utils/asyncHandler.js";
+import signInSchema from "../schemas/signup.schemas.js";
 import {
   generateAccessToken,
   generateRefreshToken,
@@ -11,29 +11,32 @@ import {
 
 const signup = asyncHandler(async (req, res) => {
   try {
-    const { username, email, password } = req.body;
+    const { adminname, email, password } = req.body;
     const validatedInput = signUpSchema.safeParse({
-      username,
+      username: adminname,
       email,
       password,
     });
     if (!validatedInput.success)
       throw new ApiError({ statusCode: 400, message: validatedInput.error });
-    const existedUser = await User.findOne({ username });
-    if (existedUser)
-      throw new ApiError({ statusCode: 409, message: "User Already Exit" });
-    const newUser = await User.create({
-      username,
+    const existedAdmin = await Admin.findOne({ adminname });
+    if (existedAdmin)
+      throw new ApiError({ statusCode: 409, message: "Admin Already Exit" });
+    const newAdmin = await Admin.create({
+      adminname,
       password,
       email,
     });
-    if (!newUser)
-      throw new ApiError({ message: "Unable To Signup User", statusCode: 501 });
+    if (!newAdmin)
+      throw new ApiError({
+        message: "Unable To Signup Admin",
+        statusCode: 501,
+      });
 
     return res.status(201).json(
       new ApiResponse({
         statusCode: 201,
-        message: "User SignUp Successfully",
+        message: "Admin SignUp Successfully",
       })
     );
   } catch (error) {
@@ -48,28 +51,30 @@ const signup = asyncHandler(async (req, res) => {
 
 const signin = asyncHandler(async (req, res) => {
   try {
-    const { username, password } = req.body;
-    const validatedInput = signInSchema.safeParse({ username, password });
+    const { adminname, password } = req.body;
+    const validatedInput = signInSchema.safeParse({
+      username: adminname,
+      password,
+    });
     if (!validatedInput.success)
       throw new ApiError({ statusCode: 400, message: validatedInput.error });
-    const existUser = await User.findOne({ username });
-    if (!existUser)
+    const existedAdmin = await Admin.findOne({ adminname });
+    if (!existedAdmin)
       throw new ApiError({
         statusCode: 400,
-        message: "User Does not Exist with such username",
+        message: "Admin Does not Exist with such adminname",
       });
-
-    if (!(await existUser.isPasswordCorrect(password)))
+    if (!(await existedAdmin.isPasswordCorrect(password)))
       throw new ApiError({ message: "Incorrect Password", statusCode: 400 });
-    const accessToken = generateAccessToken(res, existUser);
-    const refreshToken = await generateRefreshToken(res, existUser);
+    const accessToken = generateAccessToken(res, existedAdmin);
+    const refreshToken = await generateRefreshToken(res, existedAdmin);
     return res.status(200).json({
       statusCode: 200,
       data: {
         refreshToken,
         accessToken,
       },
-      message: "User is Successfully Signed In",
+      message: "Admin is Successfully Signed In",
     });
   } catch (error) {
     return res.status(error.statusCode || 500).json({
