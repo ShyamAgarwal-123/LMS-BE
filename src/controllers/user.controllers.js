@@ -79,4 +79,13 @@ const signin = asyncHandler(async (req, res) => {
   }
 });
 
-export { signup, signin };
+const editProfileImage = asyncHandler(async (req, res, next) => {
+  const { _id } = req.info;
+  console.log(req);
+  if (!_id)
+    throw new ApiError({ statusCode: 403, message: "Unauthorized Access" });
+  const user = User.findById(_id);
+
+  res.json({ h: "hi" });
+});
+export { signup, signin, editProfileImage };
