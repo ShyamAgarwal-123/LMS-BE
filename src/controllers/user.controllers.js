@@ -88,9 +88,9 @@ export const signin = asyncHandler(async (req, res) => {
   }
 });
 
-export const refreshAccessToken = asyncHandler(async (req, res, next) => {});
+export const refreshAccessToken = asyncHandler(async (req, res) => {});
 
-export const editProfileImage = asyncHandler(async (req, res, next) => {
+export const editProfileImage = asyncHandler(async (req, res) => {
   try {
     const { _id } = req.info;
     if (!_id)
@@ -132,7 +132,7 @@ export const editProfileImage = asyncHandler(async (req, res, next) => {
   }
 });
 
-export const editCoverImage = asyncHandler(async (req, res, next) => {
+export const editCoverImage = asyncHandler(async (req, res) => {
   try {
     const { _id } = req.info;
     if (!_id)
