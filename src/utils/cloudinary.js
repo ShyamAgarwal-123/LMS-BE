@@ -1,25 +1,36 @@
 import { v2 as cloudinary } from "cloudinary";
 import fs from "fs";
+import ApiError from "./ApiError.js";
+// import ApiResponse from "./ApiResponse";
 
 cloudinary.config({
-  cloud_name: process.env.CLOUD_NAME,
-  api_key: process.env.CLOUDINARY_KEY,
-  api_secret: process.env.CLOUDINARY_SECRET,
+  cloud_name: process.env.CLOUDINARY_NAME,
+  api_key: process.env.CLOUDINARY_API_KEY,
+  api_secret: process.env.CLOUDINARY_API_SECRET,
 });
 
 async function uploadImageOnCloudinary(filePath, folderPath) {
   try {
     if (!filePath) return null;
     const response = await cloudinary.uploader.upload(filePath, {
-      resource_type: "Image",
+      resource_type: "auto",
       folder: folderPath,
     });
-    if (!response) throw new Error("Unable to Upload File in Cloudinary");
-    fs.unlink(filePath);
+    if (!response)
+      throw new ApiError({
+        message: "Unable to Upload File in Cloudinary",
+        statusCode: 500,
+      });
+    fs.unlinkSync(filePath);
     return response;
   } catch (error) {
-    fs.unlink(filePath);
-    console.log(error.message);
+    fs.unlinkSync(filePath);
+    // return res.statusCode(error.statusCode || error.http_code || 500).json(
+    //   new ApiResponse({
+    //     statusCode: error.statusCode || error.http_code || 500,
+    //     message: error.message,
+    //   })
+    // );
     return null;
   }
 }
@@ -28,7 +39,7 @@ async function uploadVideoOnCloudinary(filePath, folderPath) {
   try {
     if (!filePath) return null;
     const response = await cloudinary.uploader.upload_large(filePath, {
-      resource_type: "video",
+      resource_type: "auto",
       folder: folderPath,
     });
     if (!response) throw new Error("Unable to Upload File in Cloudinary");

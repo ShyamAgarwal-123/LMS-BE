@@ -68,14 +68,22 @@ const signin = asyncHandler(async (req, res) => {
       throw new ApiError({ message: "Incorrect Password", statusCode: 400 });
     const accessToken = generateAccessToken(res, existedAdmin);
     const refreshToken = await generateRefreshToken(res, existedAdmin);
-    return res.status(200).json({
-      statusCode: 200,
-      data: {
-        refreshToken,
-        accessToken,
-      },
-      message: "Admin is Successfully Signed In",
-    });
+    const cookieOption = {
+      httpOnly: true,
+      maxAge: 300000,
+    };
+    return res
+      .cookie("refreshToken", refreshToken, cookieOption)
+      .cookie("accessToken", accessToken, cookieOption)
+      .status(200)
+      .json({
+        statusCode: 200,
+        data: {
+          refreshToken,
+          accessToken,
+        },
+        message: "Admin is Successfully Signed In",
+      });
   } catch (error) {
     return res.status(error.statusCode || 500).json({
       message: error.message,
