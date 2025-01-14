@@ -152,16 +152,19 @@ export const editProfileImage = asyncHandler(async (req, res) => {
         });
       }
     }
-    const { public_id } = await uploadImageOnCloudinary(
+    const generated_public_id = _id + "/" + Date.now();
+    const { public_id, url } = await uploadImageOnCloudinary(
       path,
-      "user/ProfileImage"
+      "user/ProfileImage",
+      generated_public_id
     );
-    if (!public_id)
+    if (!public_id && !url)
       throw new ApiError({
         message: "Unable To Upload the Profile Image",
         statusCode: 500,
       });
     user.profileImage_id = public_id;
+    user.profileImage = url;
     user.save({ validateBeforeSave: false });
     return res.status(200).json(
       new ApiResponse({
@@ -189,21 +192,31 @@ export const editCoverImage = asyncHandler(async (req, res) => {
     if (!path)
       throw new ApiError({ message: "Invalid File Type", statusCode: 400 });
 
-    const { public_id } = await uploadImageOnCloudinary(
+    const user = await User.findById(_id);
+    if (user.coverImage_id) {
+      const response = await deleteImageFromCloudinary(user.coverImage_id);
+      if (!response) {
+        fs.unlinkSync(path);
+        throw new ApiError({
+          message: "Unable to Upload The Cover Image",
+          statusCode: 500,
+        });
+      }
+    }
+    const generated_public_id = _id + "/" + Date.now();
+    const { public_id, url } = await uploadImageOnCloudinary(
       path,
-      "user/CoverImage"
+      "user/CoverImage",
+      generated_public_id
     );
-    if (!public_id)
+    if (!public_id && !url)
       throw new ApiError({
         message: "Unable To Upload the Cover Image",
         statusCode: 500,
       });
-
-    await User.findByIdAndUpdate(
-      _id,
-      { coverImage_id: public_id },
-      { validateBeforeSave: false }
-    );
+    user.coverImage_id = public_id;
+    user.coverImage = url;
+    user.save({ validateBeforeSave: false });
 
     return res.status(200).json(
       new ApiResponse({

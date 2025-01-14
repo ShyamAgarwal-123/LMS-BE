@@ -2,6 +2,7 @@ import { Router } from "express";
 import upload from "../middlewares/multer.middlewares.js";
 import Auth from "../middlewares/auth.middlewares.js";
 import {
+  editCoverImage,
   editProfileImage,
   refreshAccessToken,
   signin,
@@ -19,4 +20,7 @@ userRouter
   .route("/profileImage")
   .put(upload.single("profileImage"), editProfileImage);
 
+userRouter
+  .route("/coverImage")
+  .put(upload.single("coverImage"), editCoverImage);
 export default userRouter;

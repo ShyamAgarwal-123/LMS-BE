@@ -9,10 +9,12 @@ cloudinary.config({
   api_secret: process.env.CLOUDINARY_API_SECRET,
 });
 
-async function uploadImageOnCloudinary(filePath, folderPath) {
+async function uploadImageOnCloudinary(filePath, folderPath, public_id) {
   try {
     if (!filePath) return null;
+
     const response = await cloudinary.uploader.upload(filePath, {
+      public_id,
       resource_type: "auto",
       folder: folderPath,
     });
@@ -85,6 +87,25 @@ async function deleteVideoFromCloudinary(publicid) {
     return null;
   }
 }
+
+export const transformImage = (public_id) => {
+  try {
+    const autoCropUrl = cloudinary.url(public_id, {
+      crop: "auto",
+      gravity: "auto",
+      width: 500,
+      height: 500,
+    });
+    if (!autoCropUrl)
+      throw new ApiError({
+        message: "Unable to Transform Image",
+        statusCode: 500,
+      });
+    return autoCropUrl;
+  } catch (error) {
+    return null;
+  }
+};
 
 export {
   uploadImageOnCloudinary,
