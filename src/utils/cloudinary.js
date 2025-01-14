@@ -59,7 +59,11 @@ async function deleteImageFromCloudinary(publicid) {
       resource_type: "image",
       invalidate: true,
     });
-    if (!response) throw new Error("Unable to Delete Image from Clodinary");
+    if (!response)
+      throw new ApiError({
+        message: "Unable to Delete File in Cloudinary",
+        statusCode: 500,
+      });
     return response;
   } catch (error) {
     console.log(error.message);
