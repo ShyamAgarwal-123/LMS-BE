@@ -9,7 +9,7 @@ import {
   generateRefreshToken,
 } from "../utils/generateToken.js";
 
-const signup = asyncHandler(async (req, res) => {
+export const signup = asyncHandler(async (req, res) => {
   try {
     const { adminname, email, password } = req.body;
     const validatedInput = signUpSchema.safeParse({
@@ -49,7 +49,7 @@ const signup = asyncHandler(async (req, res) => {
   }
 });
 
-const signin = asyncHandler(async (req, res) => {
+export const signin = asyncHandler(async (req, res) => {
   try {
     const { adminname, password } = req.body;
     const validatedInput = signInSchema.safeParse({
@@ -92,4 +92,44 @@ const signin = asyncHandler(async (req, res) => {
   }
 });
 
-export { signup, signin };
+export const refreshAccessToken = asyncHandler(async (req, res) => {
+  try {
+    const incomingRefreshToken = req.cookies.refreshToken;
+    if (!incomingRefreshToken)
+      throw new ApiError({
+        message: "Unauthorised Request",
+        statusCode: 403,
+      });
+    const verifiedToken = jwt.verify(
+      incomingRefreshToken,
+      process.env.JWT_REFRESH_SECRET
+    );
+
+    if (!verifiedToken)
+      throw new ApiError({ statusCode: 401, message: "Invaild Refresh Token" });
+
+    const existUser = await Admin.findById(verifiedToken._id);
+
+    const accessToken = generateAccessToken(res, existUser);
+    const cookieOption = {
+      httpOnly: true,
+      maxAge: 24 * 60 * 60 * 1000,
+    };
+    return res
+      .cookie("accessToken", accessToken, cookieOption)
+      .status(201)
+      .json(
+        new ApiResponse({
+          statusCode: 201,
+          message: "Access Token is Successfully Refreshed",
+        })
+      );
+  } catch (error) {
+    res.status(error.statusCode || error.http_code || 500).json(
+      new ApiResponse({
+        message: error.message,
+        statusCode: error.statusCode || error.http_code || 500,
+      })
+    );
+  }
+});

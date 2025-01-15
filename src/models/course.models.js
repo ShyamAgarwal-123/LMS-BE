@@ -7,24 +7,39 @@ const courseSchema = new Schema({
     required: [true, "Course Title is Required"],
     trim: true,
   },
+  subtitle: {
+    type: String,
+    required: [true, "Course Subtitle is Required"],
+    trim: true,
+  },
+  discription: {
+    type: String,
+    required: [true, "Course Discription is Required"],
+  },
   price: {
     type: Number,
     required: [true, "Price is Required"],
   },
-  courseImage: {
+  thumbnail: {
     type: String,
     default:
       "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcRoeC_2VgaUp-id_Sqlsf0lG1DfmABAF6aTBw&s",
   },
-  courseImage_id: {
+  thumbnail_id: {
     type: String,
   },
-  video: [
+  videos_id: [
     {
       type: Schema.Types.ObjectId,
-      ref: "Comment",
+      ref: "Video",
     },
   ],
+  isPublished: {
+    type: Boolean,
+    default: false,
+  },
 });
 
-export default Course = mongoose.model("Course", courseSchema);
+const Course = mongoose.model("Course", courseSchema);
+
+export default Course;

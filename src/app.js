@@ -10,7 +10,9 @@ app.use("/static", express.static("public"));
 
 import userRouter from "./routes/user.routes.js";
 import adminRouter from "./routes/admin.routes.js";
+import courseRouter from "./routes/course.routes.js";
 
 app.use("/api/v1/admins", adminRouter);
 app.use("/api/v1/users", userRouter);
+app.use("/api/v1/courses", courseRouter);
 export default app;
