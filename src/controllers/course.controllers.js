@@ -4,6 +4,7 @@ import ApiResponse from "../utils/ApiResponse.js";
 import asyncHandler from "../utils/asyncHandler.js";
 import courseSchema from "../schemas/course.schemas.js";
 import { uploadImageOnCloudinary } from "../utils/cloudinary.js";
+import Admin from "../models/admin.model.js";
 
 export const getAllCourses = asyncHandler(async (req, res, next) => {
   try {
@@ -46,32 +47,15 @@ export const createCourse = asyncHandler(async (req, res) => {
       subtitle,
       price,
       discription,
+      isPublished,
     });
     if (!validatedInputs.success)
       throw new ApiError({ message: validatedInputs.error, statusCode: 400 });
-    const { path } = req.file;
-    if (!path)
-      throw new ApiError({ message: "Thumbnail is Required", statusCode: 400 });
-
-    const generated_public_id = _id + "/" + Date.now();
-    const { public_id, url } = await uploadImageOnCloudinary(
-      path,
-      "courses/Tumbnail",
-      generated_public_id
-    );
-    if (!public_id && !url)
-      throw new ApiError({
-        message: "Unable To Upload the Upload The Tumbnail",
-        statusCode: 500,
-      });
-
     const course = await Course.create({
       title,
       subtitle,
       price,
       discription,
-      thumbnail: url,
-      thumbnail_id: public_id,
       isPublished,
     });
     if (!course)
@@ -79,11 +63,75 @@ export const createCourse = asyncHandler(async (req, res) => {
         message: "Unable to Create Course",
         statusCode: 500,
       });
+
+    await Admin.findByIdAndUpdate(_id, {
+      $push: { myCourses: course._id },
+    });
     return res.status(200).json(
       new ApiResponse({
         message: "Course Created Successfully",
         statusCode: 200,
         data: course,
+      })
+    );
+  } catch (error) {
+    return res.status(error.statusCode || error.http_code || 500).json(
+      new ApiResponse({
+        message: error.message,
+        statusCode: error.statusCode || error.http_code || 500,
+      })
+    );
+  }
+});
+
+export const uploadCourseThumbnail = asyncHandler(async (req, res) => {
+  try {
+    const { _id } = req.info;
+    if (!_id)
+      throw new ApiError({ statusCode: 403, message: "Unauthorized Access" });
+    const { courseId } = req.params;
+    if (!courseId)
+      throw new ApiError({ message: "CourseId is Required", statusCode: 400 });
+    const course = Course.findById(courseId);
+    if (!course)
+      throw new ApiError({
+        message: "Unable to Fetch Course form DB",
+        statusCode: 500,
+      });
+    const { path } = req.file;
+    if (!path)
+      throw new ApiError({
+        message: "Course Thumbnail is Required",
+        statusCode: 400,
+      });
+    if (course.thumbnail_id) {
+      const response = await deleteImageFromCloudinary(course.thumbnail_id);
+      if (!response) {
+        fs.unlinkSync(path);
+        throw new ApiError({
+          message: "Unable to Delete The Previous Course Thumbnail",
+          statusCode: 500,
+        });
+      }
+    }
+    const generated_public_id = courseId + "/" + Date.now();
+    const { public_id, url } = await uploadImageOnCloudinary(
+      path,
+      `Courses/CourseThumbnail/${courseId}`,
+      generated_public_id
+    );
+    if (!public_id && !url)
+      throw new ApiError({
+        message: "Unable To Upload the Upload The Course Tumbnail",
+        statusCode: 500,
+      });
+    course.thumbnail_id = public_id;
+    course.thumbnail = url;
+    course.save({ validateBeforeSave: false });
+    return res.status(200).json(
+      new ApiResponse({
+        statusCode: 200,
+        message: "Course Thumbanil updated successfully",
       })
     );
   } catch (error) {

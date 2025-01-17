@@ -5,6 +5,10 @@ const videoSchema = new Schema({
     type: String,
     required: [true, "Video URL is Required"],
   },
+  public_id: {
+    type: String,
+    required: [true, "Video public_id is Required"],
+  },
   thumbnail: {
     type: String,
     default:
@@ -19,7 +23,10 @@ const videoSchema = new Schema({
     required: [true, "Video Title is Required"],
     trim: true,
   },
-
+  isLock: {
+    type: Boolean,
+    default: true,
+  },
   comments: [
     {
       type: Schema.Types.ObjectId,

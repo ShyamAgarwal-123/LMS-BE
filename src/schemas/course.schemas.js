@@ -14,6 +14,7 @@ const courseSchema = z.object({
     .string()
     .min(10, "The description must be at least 10 characters")
     .max(500, "The description must be at most 500 characters"),
+  isPublished: z.boolean(),
 });
 
 export default courseSchema;
