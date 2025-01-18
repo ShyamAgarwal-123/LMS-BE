@@ -11,19 +11,23 @@ import {
 
 export const signup = asyncHandler(async (req, res) => {
   try {
-    const { adminname, email, password } = req.body;
+    const { username, email, password } = req.body;
     const validatedInput = signUpSchema.safeParse({
-      username: adminname,
+      username,
       email,
       password,
     });
     if (!validatedInput.success)
-      throw new ApiError({ statusCode: 400, message: validatedInput.error });
-    const existedAdmin = await Admin.findOne({ adminname });
+      throw new ApiError({
+        statusCode: 400,
+        message: validatedInput.error?.issues?.[0]?.message,
+        path: validatedInput.error?.issues?.[0]?.path?.[0],
+      });
+    const existedAdmin = await Admin.findOne({ username });
     if (existedAdmin)
       throw new ApiError({ statusCode: 409, message: "Admin Already Exit" });
     const newAdmin = await Admin.create({
-      adminname,
+      username,
       password,
       email,
     });
@@ -40,10 +44,11 @@ export const signup = asyncHandler(async (req, res) => {
       })
     );
   } catch (error) {
-    return res.status(error.statusCode || 500).json(
+    return res.status(error.statusCode || 500 || error.http_code).json(
       new ApiResponse({
         message: error.message,
-        statusCode: error.statusCode || 500,
+        path: error.path,
+        statusCode: error.statusCode || 500 || error.http_code,
       })
     );
   }
@@ -51,18 +56,22 @@ export const signup = asyncHandler(async (req, res) => {
 
 export const signin = asyncHandler(async (req, res) => {
   try {
-    const { adminname, password } = req.body;
+    const { email, password } = req.body;
     const validatedInput = signInSchema.safeParse({
-      username: adminname,
+      email,
       password,
     });
     if (!validatedInput.success)
-      throw new ApiError({ statusCode: 400, message: validatedInput.error });
-    const existedAdmin = await Admin.findOne({ adminname });
+      throw new ApiError({
+        statusCode: 400,
+        message: validatedInput.error?.issues?.[0]?.message,
+        path: validatedInput.error?.issues?.[0]?.path?.[0],
+      });
+    const existedAdmin = await Admin.findOne({ email });
     if (!existedAdmin)
       throw new ApiError({
         statusCode: 400,
-        message: "Admin Does not Exist with such adminname",
+        message: "Admin Does not Exist with such email",
       });
     if (!(await existedAdmin.isPasswordCorrect(password)))
       throw new ApiError({ message: "Incorrect Password", statusCode: 400 });
@@ -71,6 +80,8 @@ export const signin = asyncHandler(async (req, res) => {
     const cookieOption = {
       httpOnly: true,
       maxAge: 300000,
+      secure: true,
+      sameSite: "none",
     };
     return res
       .cookie("refreshToken", refreshToken, cookieOption)
@@ -78,17 +89,17 @@ export const signin = asyncHandler(async (req, res) => {
       .status(200)
       .json({
         statusCode: 200,
-        data: {
-          refreshToken,
-          accessToken,
-        },
+        data: existedAdmin,
         message: "Admin is Successfully Signed In",
       });
   } catch (error) {
-    return res.status(error.statusCode || 500).json({
-      message: error.message,
-      statusCode: error.statusCode || 500,
-    });
+    return res.status(error.statusCode || 500 || error.http_code).json(
+      new ApiResponse({
+        message: error.message,
+        path: error.path,
+        statusCode: error.statusCode || 500 || error.http_code,
+      })
+    );
   }
 });
 

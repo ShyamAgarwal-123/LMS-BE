@@ -24,7 +24,11 @@ export const signup = asyncHandler(async (req, res) => {
       password,
     });
     if (!validatedInput.success)
-      throw new ApiError({ statusCode: 400, message: validatedInput.error });
+      throw new ApiError({
+        statusCode: 400,
+        message: validatedInput.error?.issues?.[0]?.message,
+        path: validatedInput.error?.issues?.[0]?.path?.[0],
+      });
     const existedUser = await User.findOne({ username });
     if (existedUser)
       throw new ApiError({ statusCode: 409, message: "User Already Exit" });
@@ -43,10 +47,11 @@ export const signup = asyncHandler(async (req, res) => {
       })
     );
   } catch (error) {
-    return res.status(error.statusCode || 500).json(
+    return res.status(error.statusCode || error.http_code || 500).json(
       new ApiResponse({
         message: error.message,
-        statusCode: error.statusCode || 500,
+        statusCode: error.statusCode || error.http_code || 500,
+        path: error.path,
       })
     );
   }
@@ -54,15 +59,19 @@ export const signup = asyncHandler(async (req, res) => {
 
 export const signin = asyncHandler(async (req, res) => {
   try {
-    const { username, password } = req.body;
-    const validatedInput = signInSchema.safeParse({ username, password });
+    const { email, password } = req.body;
+    const validatedInput = signInSchema.safeParse({ email, password });
     if (!validatedInput.success)
-      throw new ApiError({ statusCode: 400, message: validatedInput.error });
-    const existUser = await User.findOne({ username });
+      throw new ApiError({
+        statusCode: 400,
+        message: validatedInput.error?.issues?.[0]?.message,
+        path: validatedInput.error?.issues?.[0]?.path?.[0],
+      });
+    const existUser = await User.findOne({ email });
     if (!existUser)
       throw new ApiError({
         statusCode: 400,
-        message: "User Does not Exist with such username",
+        message: "User Does not Exist with such email",
       });
 
     if (!(await existUser.isPasswordCorrect(password)))
@@ -72,20 +81,28 @@ export const signin = asyncHandler(async (req, res) => {
     const cookieOption = {
       httpOnly: true,
       maxAge: 24 * 60 * 60 * 1000,
+      sameSite: "none",
+      secure: true,
     };
     return res
       .cookie("refreshToken", refreshToken, cookieOption)
       .cookie("accessToken", accessToken, cookieOption)
       .status(200)
-      .json({
-        statusCode: 201,
-        message: "User is Successfully Signed In",
-      });
+      .json(
+        new ApiResponse({
+          statusCode: 201,
+          message: "User is Successfully Signed In",
+          data: existUser,
+        })
+      );
   } catch (error) {
-    return res.status(error.statusCode || 500).json({
-      message: error.message,
-      statusCode: error.statusCode || 500,
-    });
+    return res.status(error.statusCode || error.http_code || 500).json(
+      new ApiResponse({
+        message: error.message,
+        path: error.path,
+        statusCode: error.statusCode || error.http_code || 500,
+      })
+    );
   }
 });
 
@@ -111,6 +128,7 @@ export const refreshAccessToken = asyncHandler(async (req, res) => {
     const cookieOption = {
       httpOnly: true,
       maxAge: 24 * 60 * 60 * 1000,
+      sameSite: "none",
     };
     return res
       .cookie("accessToken", accessToken, cookieOption)
@@ -173,10 +191,10 @@ export const editProfileImage = asyncHandler(async (req, res) => {
       })
     );
   } catch (error) {
-    return res.status(error.statusCode || 500).json(
+    return res.status(error.statusCode || error.http_code || 500).json(
       new ApiResponse({
         message: error.message,
-        statusCode: error.statusCode || 500,
+        statusCode: error.statusCode || error.http_code || 500,
       })
     );
   }
@@ -225,10 +243,10 @@ export const editCoverImage = asyncHandler(async (req, res) => {
       })
     );
   } catch (error) {
-    return res.status(error.statusCode || 500).json(
+    return res.status(error.statusCode || error.http_code || 500).json(
       new ApiResponse({
         message: error.message,
-        statusCode: error.statusCode || 500,
+        statusCode: error.statusCode || error.http_code || 500,
       })
     );
   }

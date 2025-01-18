@@ -4,7 +4,7 @@ import jwt from "jsonwebtoken";
 
 const adminSchema = new Schema(
   {
-    adminname: {
+    username: {
       type: String,
       required: [true, "Admin name is Required"],
       trim: true,
