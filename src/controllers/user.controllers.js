@@ -17,7 +17,7 @@ import fs from "fs";
 
 export const signup = asyncHandler(async (req, res) => {
   try {
-    const { username, email, password } = req.body;
+    const { username, email, password, role } = req.body;
     const validatedInput = signUpSchema.safeParse({
       username,
       email,
@@ -36,6 +36,7 @@ export const signup = asyncHandler(async (req, res) => {
       username,
       password,
       email,
+      role,
     });
     if (!newUser)
       throw new ApiError({ message: "Unable To Signup User", statusCode: 501 });
@@ -90,11 +91,40 @@ export const signin = asyncHandler(async (req, res) => {
       .status(200)
       .json(
         new ApiResponse({
-          statusCode: 201,
+          statusCode: 200,
           message: "User is Successfully Signed In",
           data: existUser,
         })
       );
+  } catch (error) {
+    return res.status(error.statusCode || error.http_code || 500).json(
+      new ApiResponse({
+        message: error.message,
+        path: error.path,
+        statusCode: error.statusCode || error.http_code || 500,
+      })
+    );
+  }
+});
+
+export const getUser = asyncHandler(async (req, res) => {
+  try {
+    const { _id } = req.info;
+    if (!_id)
+      throw new ApiError({ statusCode: 403, message: "Unauthorized Access" });
+    const existUser = await User.findById(_id);
+    if (!existUser)
+      throw new ApiError({
+        statusCode: 500,
+        message: "Unable to Get User from DB",
+      });
+    return res.status(200).json(
+      new ApiResponse({
+        statusCode: 200,
+        message: "User is Successfully Signed In",
+        data: existUser,
+      })
+    );
   } catch (error) {
     return res.status(error.statusCode || error.http_code || 500).json(
       new ApiResponse({
@@ -151,8 +181,8 @@ export const refreshAccessToken = asyncHandler(async (req, res) => {
 
 export const editProfileImage = asyncHandler(async (req, res) => {
   try {
-    const { _id } = req.info;
-    if (!_id)
+    const { _id, role } = req.info;
+    if (!(_id || role))
       throw new ApiError({ statusCode: 403, message: "Unauthorized Access" });
 
     const path = req.file?.path;
@@ -173,7 +203,7 @@ export const editProfileImage = asyncHandler(async (req, res) => {
     const generated_public_id = _id + "/" + Date.now();
     const { public_id, url } = await uploadImageOnCloudinary(
       path,
-      "user/ProfileImage",
+      `${role}/ProfileImage`,
       generated_public_id
     );
     if (!public_id && !url)
@@ -202,8 +232,8 @@ export const editProfileImage = asyncHandler(async (req, res) => {
 
 export const editCoverImage = asyncHandler(async (req, res) => {
   try {
-    const { _id } = req.info;
-    if (!_id)
+    const { _id, role } = req.info;
+    if (!(_id || role))
       throw new ApiError({ statusCode: 403, message: "Unauthorized Access" });
 
     const path = req.file?.path;
@@ -224,7 +254,7 @@ export const editCoverImage = asyncHandler(async (req, res) => {
     const generated_public_id = _id + "/" + Date.now();
     const { public_id, url } = await uploadImageOnCloudinary(
       path,
-      "user/CoverImage",
+      `${role}/CoverImage`,
       generated_public_id
     );
     if (!public_id && !url)

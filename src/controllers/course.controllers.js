@@ -4,7 +4,7 @@ import ApiResponse from "../utils/ApiResponse.js";
 import asyncHandler from "../utils/asyncHandler.js";
 import courseSchema from "../schemas/course.schemas.js";
 import { uploadImageOnCloudinary } from "../utils/cloudinary.js";
-import Admin from "../models/admin.model.js";
+import User from "../models/user.models.js";
 
 export const getAllCourses = asyncHandler(async (req, res, next) => {
   try {
@@ -64,8 +64,8 @@ export const createCourse = asyncHandler(async (req, res) => {
         statusCode: 500,
       });
 
-    await Admin.findByIdAndUpdate(_id, {
-      $push: { myCourses: course._id },
+    await User.findByIdAndUpdate(_id, {
+      $push: { courses: course._id },
     });
     return res.status(200).json(
       new ApiResponse({

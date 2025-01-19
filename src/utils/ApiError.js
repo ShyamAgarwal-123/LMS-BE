@@ -4,7 +4,7 @@ export default class ApiError extends Error {
     statusCode,
     stack,
     errors = [],
-    ...props
+    path = "",
   }) {
     super(message);
     this.name = "ApiError";
@@ -17,8 +17,8 @@ export default class ApiError extends Error {
     } else {
       Error.captureStackTrace(this, this.constructor);
     }
-    if (props) {
-      this.path = props.path;
+    if (path) {
+      this.path = path;
     }
   }
 }

@@ -4,6 +4,7 @@ import Auth from "../middlewares/auth.middlewares.js";
 import {
   editCoverImage,
   editProfileImage,
+  getUser,
   refreshAccessToken,
   signin,
   signup,
@@ -16,6 +17,7 @@ userRouter.route("/refreshAccessToken").post(refreshAccessToken);
 
 userRouter.use(Auth);
 
+userRouter.route("/getUser").get(getUser);
 userRouter
   .route("/profileImage")
   .put(upload.single("profileImage"), editProfileImage);

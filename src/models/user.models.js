@@ -23,7 +23,7 @@ const userSchema = new Schema(
       type: String,
       required: [true, "Password is Required"],
     },
-    purchasedCourses: [
+    courses: [
       {
         type: Schema.Types.ObjectId,
         ref: "Course",
@@ -48,6 +48,10 @@ const userSchema = new Schema(
     refreshToken: {
       type: String,
     },
+    role: {
+      type: String,
+      default: "user",
+    },
   },
   { timestamps: true }
 );
@@ -67,6 +71,7 @@ userSchema.methods.generateAccessToken = function () {
   return jwt.sign(
     {
       _id: this._id,
+      role: this.role,
     },
     process.env.JWT_ACCESS_SECRET,
     {
