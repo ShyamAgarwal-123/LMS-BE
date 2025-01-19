@@ -6,7 +6,7 @@ export default function Auth(req, res, next) {
   try {
     const token =
       req.cookies.accessToken ||
-      req.headers?.authorization.replace("Bearer ", "");
+      req.headers?.authorization?.replace("Bearer ", "");
     console.log(token);
 
     if (!token) throw new ApiError({ statusCode: 403, message: "No Token" });
