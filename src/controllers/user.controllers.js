@@ -82,8 +82,7 @@ export const signin = asyncHandler(async (req, res) => {
     const cookieOption = {
       httpOnly: true,
       maxAge: 24 * 60 * 60 * 1000,
-      sameSite: "none",
-      secure: true,
+      smaeSite: "none",
     };
     return res
       .cookie("refreshToken", refreshToken, cookieOption)
@@ -93,7 +92,13 @@ export const signin = asyncHandler(async (req, res) => {
         new ApiResponse({
           statusCode: 200,
           message: "User is Successfully Signed In",
-          data: existUser,
+          data: {
+            user: existUser,
+            token: {
+              accessToken,
+              refreshToken,
+            },
+          },
         })
       );
   } catch (error) {
@@ -121,7 +126,7 @@ export const getUser = asyncHandler(async (req, res) => {
     return res.status(200).json(
       new ApiResponse({
         statusCode: 200,
-        message: "User is Successfully Signed In",
+        message: "Successfuly got User",
         data: existUser,
       })
     );
@@ -138,7 +143,9 @@ export const getUser = asyncHandler(async (req, res) => {
 
 export const refreshAccessToken = asyncHandler(async (req, res) => {
   try {
-    const incomingRefreshToken = req.cookies.refreshToken;
+    const incomingRefreshToken =
+      req.cookies.refreshToken ||
+      req.headers?.authorization?.replace("Bearer ", "");
     if (!incomingRefreshToken)
       throw new ApiError({
         message: "Unauthorised Request",
@@ -162,11 +169,14 @@ export const refreshAccessToken = asyncHandler(async (req, res) => {
     };
     return res
       .cookie("accessToken", accessToken, cookieOption)
-      .status(201)
+      .status(200)
       .json(
         new ApiResponse({
-          statusCode: 201,
+          statusCode: 200,
           message: "Access Token is Successfully Refreshed",
+          data: {
+            accessToken,
+          },
         })
       );
   } catch (error) {

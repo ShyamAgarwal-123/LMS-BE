@@ -13,7 +13,7 @@ const userRouter = Router();
 
 userRouter.route("/signup").post(signup);
 userRouter.route("/signin").post(signin);
-userRouter.route("/refreshAccessToken").post(refreshAccessToken);
+userRouter.route("/refreshAccessToken").get(refreshAccessToken);
 
 userRouter.use(Auth);
 
