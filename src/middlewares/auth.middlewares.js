@@ -7,10 +7,14 @@ export default function Auth(req, res, next) {
     const token =
       req.cookies.accessToken ||
       req.headers?.authorization?.replace("Bearer ", "");
-    if (!token) throw new ApiError({ statusCode: 403, message: "No Token" });
-    const verifiedToken = jwt.verify(token, process.env.JWT_ACCESS_SECRET);
-    if (!verifiedToken)
-      return new ApiError({ statusCode: 401, message: "Invaild Access Token" });
+    if (!token)
+      throw new ApiError({ statusCode: 403, message: "Access Token Required" });
+    let verifiedToken;
+    try {
+      verifiedToken = jwt.verify(token, process.env.JWT_ACCESS_SECRET);
+    } catch (error) {
+      throw new ApiError({ statusCode: 401, message: "Unauthorised Access" });
+    }
     req.info = verifiedToken;
     next();
   } catch (error) {

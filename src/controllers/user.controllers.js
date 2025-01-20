@@ -82,7 +82,6 @@ export const signin = asyncHandler(async (req, res) => {
     const cookieOption = {
       httpOnly: true,
       maxAge: 24 * 60 * 60 * 1000,
-      smaeSite: "none",
     };
     return res
       .cookie("refreshToken", refreshToken, cookieOption)
@@ -94,10 +93,6 @@ export const signin = asyncHandler(async (req, res) => {
           message: "User is Successfully Signed In",
           data: {
             user: existUser,
-            token: {
-              accessToken,
-              refreshToken,
-            },
           },
         })
       );
@@ -116,7 +111,7 @@ export const getUser = asyncHandler(async (req, res) => {
   try {
     const { _id } = req.info;
     if (!_id)
-      throw new ApiError({ statusCode: 403, message: "Unauthorized Access" });
+      throw new ApiError({ statusCode: 403, message: "user info missing" });
     const existUser = await User.findById(_id);
     if (!existUser)
       throw new ApiError({
@@ -148,16 +143,18 @@ export const refreshAccessToken = asyncHandler(async (req, res) => {
       req.headers?.authorization?.replace("Bearer ", "");
     if (!incomingRefreshToken)
       throw new ApiError({
-        message: "Unauthorised Request",
+        message: "Refresh Token Required",
         statusCode: 403,
       });
-    const verifiedToken = jwt.verify(
-      incomingRefreshToken,
-      process.env.JWT_REFRESH_SECRET
-    );
-
-    if (!verifiedToken)
-      throw new ApiError({ statusCode: 401, message: "Invaild Refresh Token" });
+    let verifiedToken;
+    try {
+      verifiedToken = jwt.verify(
+        incomingRefreshToken,
+        process.env.JWT_REFRESH_SECRET
+      );
+    } catch (error) {
+      throw new ApiError({ statusCode: 401, message: "Unauthorised Request" });
+    }
 
     const existUser = await User.findById(verifiedToken._id);
 
@@ -165,7 +162,6 @@ export const refreshAccessToken = asyncHandler(async (req, res) => {
     const cookieOption = {
       httpOnly: true,
       maxAge: 24 * 60 * 60 * 1000,
-      sameSite: "none",
     };
     return res
       .cookie("accessToken", accessToken, cookieOption)
@@ -193,7 +189,7 @@ export const editProfileImage = asyncHandler(async (req, res) => {
   try {
     const { _id, role } = req.info;
     if (!(_id || role))
-      throw new ApiError({ statusCode: 403, message: "Unauthorized Access" });
+      throw new ApiError({ statusCode: 403, message: "user info missing" });
 
     const path = req.file?.path;
     if (!path)
@@ -244,7 +240,7 @@ export const editCoverImage = asyncHandler(async (req, res) => {
   try {
     const { _id, role } = req.info;
     if (!(_id || role))
-      throw new ApiError({ statusCode: 403, message: "Unauthorized Access" });
+      throw new ApiError({ statusCode: 403, message: "user info missing" });
 
     const path = req.file?.path;
     if (!path)
