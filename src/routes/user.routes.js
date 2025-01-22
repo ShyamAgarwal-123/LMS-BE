@@ -5,6 +5,7 @@ import {
   editCoverImage,
   editProfileImage,
   getUser,
+  logout,
   refreshAccessToken,
   signin,
   signup,
@@ -25,4 +26,6 @@ userRouter
 userRouter
   .route("/coverImage")
   .put(upload.single("coverImage"), editCoverImage);
+
+userRouter.route("/logout").post(logout);
 export default userRouter;

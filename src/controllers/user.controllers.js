@@ -287,3 +287,35 @@ export const editCoverImage = asyncHandler(async (req, res) => {
     );
   }
 });
+
+export const logout = asyncHandler(async (req, res) => {
+  try {
+    const { _id, role } = req.info;
+    if (!(_id || role))
+      throw new ApiError({ statusCode: 403, message: "user info missing" });
+
+    const user = await User.findById(_id);
+    if (!user.refreshToken) {
+      throw new ApiError({ message: "Not Signed In", statusCode: 401 });
+    }
+    user.refreshToken = null;
+    await user.save({ validateBeforeSave: false });
+    return res
+      .status(200)
+      .clearCookie("accessToken")
+      .clearCookie("refreshToken")
+      .json(
+        new ApiResponse({
+          message: "Logged out succesfully",
+          statusCode: 200,
+        })
+      );
+  } catch (error) {
+    return res.status(error.statusCode || error.http_code || 500).json(
+      new ApiResponse({
+        message: error.message,
+        statusCode: error.statusCode || error.http_code || 500,
+      })
+    );
+  }
+});
