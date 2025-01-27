@@ -12,13 +12,33 @@ const courseSchema = new Schema({
     required: [true, "Course Subtitle is Required"],
     trim: true,
   },
-  discription: {
+  description: {
     type: String,
     required: [true, "Course Discription is Required"],
   },
-  price: {
+  objectives: {
+    type: String,
+    required: [true, "Course Objective is Required"],
+  },
+  welcomeMessage: {
+    type: String,
+    required: [true, "Welcome Message is Required"],
+  },
+  pricing: {
     type: Number,
     required: [true, "Price is Required"],
+  },
+  category: {
+    type: String,
+    required: [true, "Course Category is Required"],
+  },
+  level: {
+    type: String,
+    required: [true, "Course Level is Required"],
+  },
+  primaryLanguage: {
+    type: String,
+    required: [true, "Course Language is Required"],
   },
   thumbnail: {
     type: String,

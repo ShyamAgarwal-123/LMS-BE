@@ -153,7 +153,7 @@ export const refreshAccessToken = asyncHandler(async (req, res) => {
         process.env.JWT_REFRESH_SECRET
       );
     } catch (error) {
-      throw new ApiError({ statusCode: 401, message: "Unauthorised Request" });
+      throw new ApiError({ statusCode: 401, message: "Invalid Refresh Token" });
     }
 
     const existUser = await User.findById(verifiedToken._id);
@@ -170,9 +170,6 @@ export const refreshAccessToken = asyncHandler(async (req, res) => {
         new ApiResponse({
           statusCode: 200,
           message: "Access Token is Successfully Refreshed",
-          data: {
-            accessToken,
-          },
         })
       );
   } catch (error) {

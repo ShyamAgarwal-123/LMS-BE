@@ -13,7 +13,7 @@ export default function Auth(req, res, next) {
     try {
       verifiedToken = jwt.verify(token, process.env.JWT_ACCESS_SECRET);
     } catch (error) {
-      throw new ApiError({ statusCode: 401, message: "Unauthorised Access" });
+      throw new ApiError({ statusCode: 401, message: "Invalid Access Token" });
     }
     req.info = verifiedToken;
     next();

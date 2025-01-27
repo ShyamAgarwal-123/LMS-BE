@@ -5,6 +5,7 @@ import asyncHandler from "../utils/asyncHandler.js";
 import courseSchema from "../schemas/course.schemas.js";
 import { uploadImageOnCloudinary } from "../utils/cloudinary.js";
 import User from "../models/user.models.js";
+import mongoose from "mongoose";
 
 export const getAllCourses = asyncHandler(async (req, res, next) => {
   try {
@@ -34,29 +35,49 @@ export const createCourse = asyncHandler(async (req, res) => {
   try {
     const { _id } = req.info;
     if (!_id)
-      throw new ApiError({ statusCode: 403, message: "Unauthorized Access" });
-    const {
+      throw new ApiError({ statusCode: 403, message: "user info missing" });
+    let {
       title,
       subtitle,
-      price,
-      discription,
+      pricing,
+      description,
       isPublished = false,
+      category,
+      level,
+      primaryLanguage,
+      objectives,
+      welcomeMessage,
     } = req.body;
+    pricing = JSON.parse(pricing);
     const validatedInputs = courseSchema.safeParse({
       title,
       subtitle,
-      price,
-      discription,
+      pricing,
+      description,
       isPublished,
+      category,
+      level,
+      primaryLanguage,
+      objectives,
+      welcomeMessage,
     });
     if (!validatedInputs.success)
-      throw new ApiError({ message: validatedInputs.error, statusCode: 400 });
+      throw new ApiError({
+        message: validatedInputs.error?.issues?.[0]?.message,
+        path: validatedInputs.error?.issues?.[0]?.path?.[0],
+        statusCode: 400,
+      });
     const course = await Course.create({
       title,
       subtitle,
-      price,
-      discription,
+      pricing,
+      description,
       isPublished,
+      category,
+      level,
+      primaryLanguage,
+      objectives,
+      welcomeMessage,
     });
     if (!course)
       throw new ApiError({
@@ -79,6 +100,7 @@ export const createCourse = asyncHandler(async (req, res) => {
       new ApiResponse({
         message: error.message,
         statusCode: error.statusCode || error.http_code || 500,
+        path: error.path,
       })
     );
   }
@@ -132,6 +154,155 @@ export const uploadCourseThumbnail = asyncHandler(async (req, res) => {
       new ApiResponse({
         statusCode: 200,
         message: "Course Thumbanil updated successfully",
+      })
+    );
+  } catch (error) {
+    return res.status(error.statusCode || error.http_code || 500).json(
+      new ApiResponse({
+        message: error.message,
+        statusCode: error.statusCode || error.http_code || 500,
+      })
+    );
+  }
+});
+
+export const getAdminCourses = asyncHandler(async (req, res) => {
+  try {
+    const { _id } = req.info;
+    if (!_id)
+      throw new ApiError({ statusCode: 403, message: "user info missing" });
+    const courses = await User.aggregate([
+      {
+        $match: {
+          _id: new mongoose.Types.ObjectId(_id),
+        },
+      },
+      {
+        $lookup: {
+          from: "courses",
+          localField: "courses",
+          foreignField: "_id",
+          as: "courses",
+          pipeline: [
+            {
+              $lookup: {
+                from: "users",
+                localField: "_id",
+                foreignField: "courses",
+                as: "students",
+              },
+            },
+            {
+              $project: {
+                _id: 1,
+                pricing: 1,
+                title: 1,
+                students: {
+                  $max: [{ $subtract: [{ $size: "$students" }, 1] }, 0],
+                },
+                revenue: {
+                  $multiply: [
+                    { $max: [{ $subtract: [{ $size: "$students" }, 1] }, 0] }, // Adjusted student count
+                    "$pricing",
+                  ],
+                },
+              },
+            },
+          ],
+        },
+      },
+      {
+        $project: {
+          courses: 1,
+        },
+      },
+    ]);
+
+    if (!courses) {
+      throw new ApiError({
+        message: "Unable to get the Required Courses from db",
+        statusCode: 500,
+      });
+    }
+    return res.status(200).json(
+      new ApiResponse({
+        message: "Successfully got the requested Courses",
+        statusCode: 200,
+        data: courses[0]?.courses,
+      })
+    );
+  } catch (error) {
+    return res.status(error.statusCode || error.http_code || 500).json(
+      new ApiResponse({
+        message: error.message,
+        statusCode: error.statusCode || error.http_code || 500,
+      })
+    );
+  }
+});
+
+export const getCourse = asyncHandler(async (req, res) => {
+  try {
+    const { courseId } = req.params;
+
+    if (!courseId) {
+      throw new ApiError({ message: "Course Id is Required", statusCode: 400 });
+    }
+    const course = await Course.findById(courseId);
+    if (!course) {
+      throw new ApiError({
+        message: "Unable to get the Required Course from db",
+        statusCode: 500,
+      });
+    }
+    return res.status(200).json(
+      new ApiResponse({
+        message: "Successfully got the requested Course",
+        statusCode: 200,
+        data: course,
+      })
+    );
+  } catch (error) {
+    return res.status(error.statusCode || error.http_code || 500).json(
+      new ApiResponse({
+        message: error.message,
+        statusCode: error.statusCode || error.http_code || 500,
+      })
+    );
+  }
+});
+
+export const updateCourse = asyncHandler(async (req, res) => {
+  try {
+    const { courseId } = req.params;
+    if (!courseId) {
+      throw new ApiError({ message: "Course Id is Required", statusCode: 400 });
+    }
+
+    let newCourseData = req.body;
+    newCourseData.pricing = JSON.parse(newCourseData?.pricing);
+    const validatedInputs = courseSchema.safeParse(newCourseData);
+    if (!validatedInputs.success)
+      throw new ApiError({
+        message: validatedInputs.error?.issues?.[0]?.message,
+        path: validatedInputs.error?.issues?.[0]?.path?.[0],
+        statusCode: 400,
+      });
+    const updateCourse = await Course.findByIdAndUpdate(
+      courseId,
+      newCourseData
+    ).select("-_id -thumbnail -videos_id -isPublished -__v");
+    if (!updateCourse) {
+      throw new ApiError({
+        message: "Unable to Update The Course by DB",
+        statusCode: 500,
+      });
+    }
+    return res.status(200).json(
+      new ApiResponse({
+        message: "Successfully Updated The Data",
+        statusCode: 200,
+        data: updateCourse,
       })
     );
   } catch (error) {
