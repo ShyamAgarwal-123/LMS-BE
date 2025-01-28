@@ -5,7 +5,7 @@ const videoSchema = z.object({
     .string()
     .min(3, "The title must be at least 3 characters")
     .max(50, "The title must be at most 50 characters"),
-  isLock: z.boolean(),
+  freePreview: z.boolean({ coerce: true }),
 });
 
 export default videoSchema;

@@ -1,7 +1,7 @@
 import mongoose, { Schema } from "mongoose";
 
 const videoSchema = new Schema({
-  url: {
+  videoUrl: {
     type: String,
     required: [true, "Video URL is Required"],
   },
@@ -23,9 +23,9 @@ const videoSchema = new Schema({
     required: [true, "Video Title is Required"],
     trim: true,
   },
-  isLock: {
+  freePreview: {
     type: Boolean,
-    default: true,
+    default: false,
   },
   comments: [
     {

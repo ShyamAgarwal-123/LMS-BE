@@ -40,16 +40,16 @@ async function uploadImageOnCloudinary(filePath, folderPath, public_id) {
 async function uploadVideoOnCloudinary(filePath, folderPath, public_id) {
   try {
     if (!filePath) return null;
-    const response = await cloudinary.uploader.upload_large(filePath, {
+    const response = await cloudinary.uploader.upload(filePath, {
       public_id,
-      resource_type: "auto",
       folder: folderPath,
+      resource_type: "auto",
     });
     if (!response) throw new Error("Unable to Upload File in Cloudinary");
-    fs.unlink(filePath);
+    fs.unlinkSync(filePath);
     return response;
   } catch (error) {
-    fs.unlink(filePath);
+    fs.unlinkSync(filePath);
     return null;
   }
 }

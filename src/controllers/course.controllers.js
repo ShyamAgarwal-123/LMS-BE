@@ -248,7 +248,31 @@ export const getCourse = asyncHandler(async (req, res) => {
     if (!courseId) {
       throw new ApiError({ message: "Course Id is Required", statusCode: 400 });
     }
-    const course = await Course.findById(courseId);
+    const [course] = await Course.aggregate([
+      {
+        $match: {
+          _id: new mongoose.Types.ObjectId(courseId),
+        },
+      },
+      {
+        $lookup: {
+          from: "videos",
+          localField: "videos_id",
+          foreignField: "_id",
+          as: "videos",
+          pipeline: [
+            {
+              $project: {
+                title: 1,
+                videoUrl: 1,
+                _id: 1,
+                freePreview: 1,
+              },
+            },
+          ],
+        },
+      },
+    ]);
     if (!course) {
       throw new ApiError({
         message: "Unable to get the Required Course from db",
@@ -301,6 +325,48 @@ export const updateCourse = asyncHandler(async (req, res) => {
     return res.status(200).json(
       new ApiResponse({
         message: "Successfully Updated The Data",
+        statusCode: 200,
+        data: updateCourse,
+      })
+    );
+  } catch (error) {
+    return res.status(error.statusCode || error.http_code || 500).json(
+      new ApiResponse({
+        message: error.message,
+        statusCode: error.statusCode || error.http_code || 500,
+        path: error.path,
+      })
+    );
+  }
+});
+
+export const togglePublish = asyncHandler(async (req, res) => {
+  try {
+    const { courseId } = req.params;
+    if (!courseId) {
+      throw new ApiError({ message: "Course Id is Required", statusCode: 400 });
+    }
+    const { isPublished } = req.body;
+    if (isPublished !== false && isPublished !== true) {
+      throw new ApiError({
+        message: "isPublished is required",
+        statusCode: 400,
+      });
+    }
+    let updateCourse;
+    try {
+      updateCourse = await Course.findByIdAndUpdate(courseId, {
+        isPublished,
+      });
+    } catch (error) {
+      throw new ApiError({
+        message: "Unable to toggle isPublished by DB",
+        statusCode: 500,
+      });
+    }
+    return res.status(200).json(
+      new ApiResponse({
+        message: "isPublished Successfully is Toggled",
         statusCode: 200,
         data: updateCourse,
       })
