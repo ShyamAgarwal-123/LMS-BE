@@ -83,7 +83,6 @@ async function deleteVideoFromCloudinary(publicid) {
     if (!response) throw new Error("Unable to Delete Video from Clodinary");
     return response;
   } catch (error) {
-    console.log(error.message);
     return null;
   }
 }

@@ -3,7 +3,10 @@ import ApiError from "../utils/ApiError.js";
 import ApiResponse from "../utils/ApiResponse.js";
 import asyncHandler from "../utils/asyncHandler.js";
 import courseSchema from "../schemas/course.schemas.js";
-import { uploadImageOnCloudinary } from "../utils/cloudinary.js";
+import {
+  uploadImageOnCloudinary,
+  deleteImageFromCloudinary,
+} from "../utils/cloudinary.js";
 import User from "../models/user.models.js";
 import mongoose from "mongoose";
 
@@ -108,23 +111,20 @@ export const createCourse = asyncHandler(async (req, res) => {
 
 export const uploadCourseThumbnail = asyncHandler(async (req, res) => {
   try {
-    const { _id } = req.info;
-    if (!_id)
-      throw new ApiError({ statusCode: 403, message: "Unauthorized Access" });
     const { courseId } = req.params;
     if (!courseId)
       throw new ApiError({ message: "CourseId is Required", statusCode: 400 });
-    const course = Course.findById(courseId);
-    if (!course)
-      throw new ApiError({
-        message: "Unable to Fetch Course form DB",
-        statusCode: 500,
-      });
     const { path } = req.file;
     if (!path)
       throw new ApiError({
         message: "Course Thumbnail is Required",
         statusCode: 400,
+      });
+    const course = await Course.findById(courseId);
+    if (!course)
+      throw new ApiError({
+        message: "Unable to Fetch Course form DB",
+        statusCode: 500,
       });
     if (course.thumbnail_id) {
       const response = await deleteImageFromCloudinary(course.thumbnail_id);
@@ -154,6 +154,9 @@ export const uploadCourseThumbnail = asyncHandler(async (req, res) => {
       new ApiResponse({
         statusCode: 200,
         message: "Course Thumbanil updated successfully",
+        data: {
+          thumbnail: url,
+        },
       })
     );
   } catch (error) {
@@ -267,6 +270,7 @@ export const getCourse = asyncHandler(async (req, res) => {
                 videoUrl: 1,
                 _id: 1,
                 freePreview: 1,
+                public_id: 1,
               },
             },
           ],
