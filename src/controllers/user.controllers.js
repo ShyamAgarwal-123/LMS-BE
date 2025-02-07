@@ -14,6 +14,8 @@ import {
   generateRefreshToken,
 } from "../utils/generateToken.js";
 import fs from "fs";
+import mongoose from "mongoose";
+import Course from "../models/course.models.js";
 
 export const signup = asyncHandler(async (req, res) => {
   try {
@@ -307,6 +309,86 @@ export const logout = asyncHandler(async (req, res) => {
           statusCode: 200,
         })
       );
+  } catch (error) {
+    return res.status(error.statusCode || error.http_code || 500).json(
+      new ApiResponse({
+        message: error.message,
+        statusCode: error.statusCode || error.http_code || 500,
+      })
+    );
+  }
+});
+
+export const getStudentAllCourses = asyncHandler(async (req, res) => {
+  try {
+    const { _id } = req.info;
+    let courses;
+    try {
+      [{ courses }] = await User.aggregate([
+        {
+          $match: {
+            _id: new mongoose.Types.ObjectId(_id),
+          },
+        },
+        {
+          $lookup: {
+            from: "courses",
+            localField: "courses",
+            foreignField: "_id",
+            as: "courses",
+          },
+        },
+        {
+          $project: {
+            courses: 1,
+          },
+        },
+      ]);
+    } catch (error) {
+      throw new ApiError({
+        message: "Unable to get Student Courses from DB",
+        statusCode: 500,
+      });
+    }
+    return res.status(200).json(
+      new ApiResponse({
+        message: "Successfully got The Student All Courses",
+        statusCode: 200,
+        data: courses,
+      })
+    );
+  } catch (error) {
+    return res.status(error.statusCode || error.http_code || 500).json(
+      new ApiResponse({
+        message: error.message,
+        statusCode: error.statusCode || error.http_code || 500,
+      })
+    );
+  }
+});
+
+export const getStudentViewCourseDetails = asyncHandler(async (req, res) => {
+  try {
+    const { courseId } = req.params;
+    let courseDetails;
+    try {
+      courseDetails = await Course.findById(courseId);
+    } catch (error) {
+      throw new ApiError({
+        message: "Unable To get The Course Details from DB",
+        statusCode: 500,
+      });
+    }
+    if (!courseDetails) {
+      throw new ApiError({ message: "No Course Found", statusCode: 404 });
+    }
+    return res.status(200).json(
+      new ApiResponse({
+        message: "Successfully Got the Student View Course Details",
+        statusCode: 200,
+        data: courseDetails,
+      })
+    );
   } catch (error) {
     return res.status(error.statusCode || error.http_code || 500).json(
       new ApiResponse({

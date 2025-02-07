@@ -9,14 +9,12 @@ cloudinary.config({
   api_secret: process.env.CLOUDINARY_API_SECRET,
 });
 
-async function uploadImageOnCloudinary(filePath, folderPath, public_id) {
+async function uploadImageOnCloudinary(filePath) {
   try {
     if (!filePath) return null;
 
     const response = await cloudinary.uploader.upload(filePath, {
-      public_id,
       resource_type: "auto",
-      folder: folderPath,
     });
     if (!response)
       throw new ApiError({
@@ -41,8 +39,8 @@ async function uploadVideoOnCloudinary(filePath, folderPath, public_id) {
   try {
     if (!filePath) return null;
     const response = await cloudinary.uploader.upload(filePath, {
-      public_id,
-      folder: folderPath,
+      // public_id,
+      // folder: folderPath,
       resource_type: "auto",
     });
     if (!response) throw new Error("Unable to Upload File in Cloudinary");

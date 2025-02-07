@@ -10,9 +10,47 @@ import {
 import User from "../models/user.models.js";
 import mongoose from "mongoose";
 
-export const getAllCourses = asyncHandler(async (req, res, next) => {
+export const getAllCourses = asyncHandler(async (req, res) => {
   try {
-    const allCourses = await Course.find({ isPublished: true });
+    const {
+      category = [],
+      level = [],
+      primaryLanguage = [],
+      sortBy = "price-lowtohigh",
+    } = req.query;
+    const filters = {
+      isPublished: true,
+    };
+    if (category.length) {
+      filters.category = { $in: category.split(",") };
+    }
+    if (level.length) {
+      filters.level = { $in: level.split(",") };
+    }
+    if (primaryLanguage.length) {
+      filters.primaryLanguage = { $in: primaryLanguage.split(",") };
+    }
+
+    let sort = {};
+    switch (sortBy) {
+      case "price-lowtohigh":
+        sort.pricing = 1;
+        break;
+      case "price-hightolow":
+        sort.pricing = -1;
+        break;
+      case "title-ztoa":
+        sort.title = 1;
+        break;
+      case "title-atoz":
+        sort.title = -1;
+        break;
+      default:
+        sort.pricing = 1;
+        break;
+    }
+
+    const allCourses = await Course.find(filters).sort(sort);
     if (!allCourses)
       throw new ApiError({ message: "Unable to Get Courses", statusCode: 500 });
     if (!allCourses.length)
@@ -120,42 +158,82 @@ export const uploadCourseThumbnail = asyncHandler(async (req, res) => {
         message: "Course Thumbnail is Required",
         statusCode: 400,
       });
-    const course = await Course.findById(courseId);
-    if (!course)
-      throw new ApiError({
-        message: "Unable to Fetch Course form DB",
-        statusCode: 500,
-      });
-    if (course.thumbnail_id) {
-      const response = await deleteImageFromCloudinary(course.thumbnail_id);
-      if (!response) {
-        fs.unlinkSync(path);
-        throw new ApiError({
-          message: "Unable to Delete The Previous Course Thumbnail",
-          statusCode: 500,
-        });
-      }
-    }
-    const generated_public_id = courseId + "/" + Date.now();
-    const { public_id, url } = await uploadImageOnCloudinary(
-      path,
-      `Courses/CourseThumbnail/${courseId}`,
-      generated_public_id
-    );
+
+    const { public_id, url } = await uploadImageOnCloudinary(path);
     if (!public_id && !url)
       throw new ApiError({
         message: "Unable To Upload the Upload The Course Tumbnail",
         statusCode: 500,
       });
-    course.thumbnail_id = public_id;
-    course.thumbnail = url;
-    course.save({ validateBeforeSave: false });
+    try {
+      const course = await Course.findByIdAndUpdate(courseId, {
+        thumbnail_id: public_id,
+        thumbnail: url,
+      });
+    } catch (error) {
+      throw new ApiError({
+        message: "Unable to update Course details",
+        statusCode: 500,
+      });
+    }
     return res.status(200).json(
       new ApiResponse({
         statusCode: 200,
         message: "Course Thumbanil updated successfully",
         data: {
           thumbnail: url,
+          thumbnail_id: public_id,
+        },
+      })
+    );
+  } catch (error) {
+    return res.status(error.statusCode || error.http_code || 500).json(
+      new ApiResponse({
+        message: error.message,
+        statusCode: error.statusCode || error.http_code || 500,
+      })
+    );
+  }
+});
+
+export const deleteCourseThumbnail = asyncHandler(async (req, res) => {
+  try {
+    const { courseId } = req.params;
+    const { publicId } = req.body;
+
+    if (!courseId || !publicId) {
+      throw new ApiError({
+        message: "courseId and publicId is Required",
+        statusCode: 400,
+      });
+    }
+    const response = await deleteImageFromCloudinary(publicId);
+    if (!response) {
+      throw new ApiError({
+        message: "Unable to Delete The Course Thumbnail",
+        statusCode: 500,
+      });
+    }
+    let course;
+    try {
+      course = await Course.findByIdAndUpdate(courseId, {
+        thumbnail:
+          "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcRoeC_2VgaUp-id_Sqlsf0lG1DfmABAF6aTBw&s",
+        thumbnail_id: "",
+      });
+    } catch (error) {
+      throw new ApiError({
+        message: "Unable to update Course Details",
+        statusCode: 500,
+      });
+    }
+    return res.status(200).json(
+      new ApiResponse({
+        message: "Successfully Deleted Course Thumbnail",
+        statusCode: 200,
+        data: {
+          image:
+            "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcRoeC_2VgaUp-id_Sqlsf0lG1DfmABAF6aTBw&s",
         },
       })
     );
