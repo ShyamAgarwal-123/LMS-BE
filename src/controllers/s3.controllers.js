@@ -137,7 +137,9 @@ export const generateMultiGETVideoPreSignedURL = asyncHandler(
       let url = {};
 
       sigendURLs.forEach((video) => {
-        url[video._id] = video.getURL;
+        if (video.status === "fulfilled") {
+          url[video.value._id] = video.value.getURL;
+        }
       });
 
       return res.status(200).json(
@@ -162,8 +164,46 @@ export const generateMultiGETVideoPreSignedURL = asyncHandler(
 
 export const deleteS3Items = asyncHandler(async (req, res) => {
   try {
+    const { _id, role } = req.info;
     const { key } = req.query;
 
+    if (!key) {
+      throw new ApiError({
+        message: "S3 Key is Required",
+        statusCode: 400,
+      });
+    }
+
+    const keyParts = key.split("/");
+    if (keyParts.length < 2) {
+      throw new ApiError({
+        message: "Invalid S3 Key format",
+        statusCode: 400,
+      });
+    }
+
+    const folderName = keyParts[0];
+    const fileName = keyParts[1];
+
+    if (!folderType.hasOwnProperty(folderName)) {
+      throw new ApiError({
+        message: "Invalid folder type in S3 key",
+        statusCode: 400,
+      });
+    } else if (role === "user" || role === "student") {
+      if (folderName !== "profiles") {
+        throw new ApiError({
+          message: "Unauthorized: Users can only delete profile images",
+          statusCode: 403,
+        });
+      }
+    }
+    if (!fileName.startsWith(_id + "_")) {
+      throw new ApiError({
+        message: "Unauthorized: You can only delete your own profile image",
+        statusCode: 403,
+      });
+    }
     const result = await deleteS3Object(key);
     if (!result) {
       throw new ApiError({
@@ -175,19 +215,17 @@ export const deleteS3Items = asyncHandler(async (req, res) => {
     return res
       .json(
         new ApiResponse({
-          message: "Successfuly Deleted S3 Object",
+          message: `Successfully Deleted S3 Object from ${folderName}`,
           statusCode: 204,
         })
       )
       .status(204);
   } catch (error) {
-    return res
-      .json(
-        new ApiResponse({
-          message: error.message,
-          statusCode: error.statusCode || error.http_code || 500,
-        })
-      )
-      .status(error.statusCode || error.http_code || 500);
+    return res.status(error.statusCode || error.http_code || 500).json(
+      new ApiResponse({
+        message: error.message,
+        statusCode: error.statusCode || error.http_code || 500,
+      })
+    );
   }
 });
