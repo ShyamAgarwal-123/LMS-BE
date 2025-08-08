@@ -11,6 +11,16 @@ const folderType = {
   thumbnails: 1,
   profiles: 1,
 };
+
+const generatePublicURL = (key) => {
+  const bucketName = process.env.BUCKET_NAME;
+  const region = process.env.REGION;
+  return `https://${bucketName}.s3.${region}.amazonaws.com/${key}`;
+};
+
+const isPublicFolder = (folder) => {
+  return folder === "thumbnails" || folder === "profiles";
+};
 export const generatePUTPreSignedURL = asyncHandler(async (req, res) => {
   try {
     const { _id, role } = req.info;
@@ -41,14 +51,18 @@ export const generatePUTPreSignedURL = asyncHandler(async (req, res) => {
         statusCode: 401,
       });
     }
-    const { uploadURL, Key } = await generateUploadURL(fileType, folder, _id);
+    const { uploadURL, Key: key } = await generateUploadURL(
+      fileType,
+      folder,
+      _id
+    );
     return res.status(200).json(
       new ApiResponse({
         message: "Successfully generated pre signed url to upload",
         statusCode: 200,
         data: {
           uploadURL,
-          Key,
+          key,
         },
       })
     );
@@ -225,6 +239,56 @@ export const deleteS3Items = asyncHandler(async (req, res) => {
       new ApiResponse({
         message: error.message,
         statusCode: error.statusCode || error.http_code || 500,
+      })
+    );
+  }
+});
+
+export const getPublicURL = asyncHandler(async (req, res) => {
+  try {
+    const { key } = req.query;
+
+    if (!key) {
+      throw new ApiError({
+        message: "S3 Key is Required",
+        statusCode: 400,
+      });
+    }
+
+    const keyParts = key.split("/");
+    const folderName = keyParts[0];
+
+    if (!folderType.hasOwnProperty(folderName)) {
+      throw new ApiError({
+        message: "Invalid folder type in S3 key",
+        statusCode: 400,
+      });
+    }
+
+    if (!isPublicFolder(folderName)) {
+      throw new ApiError({
+        message: `Folder '${folderName}' does not allow public access. Use pre-signed URLs instead.`,
+        statusCode: 403,
+      });
+    }
+
+    const publicURL = generatePublicURL(key);
+
+    return res.status(200).json(
+      new ApiResponse({
+        message: "Successfully generated public URL",
+        statusCode: 200,
+        data: {
+          publicURL,
+          key,
+        },
+      })
+    );
+  } catch (error) {
+    return res.status(error.statusCode || 500).json(
+      new ApiResponse({
+        message: error.message || "Internal server error",
+        statusCode: error.statusCode || 500,
       })
     );
   }

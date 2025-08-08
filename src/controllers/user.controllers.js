@@ -160,6 +160,17 @@ export const refreshAccessToken = asyncHandler(async (req, res) => {
 
     const existUser = await User.findById(verifiedToken._id);
 
+    if (
+      !existUser ||
+      !existUser.refreshToken ||
+      existUser.refreshToken !== incomingRefreshToken
+    ) {
+      throw new ApiError({
+        statusCode: 401,
+        message: "Invalid Refresh Token or User Logged Out",
+      });
+    }
+
     const accessToken = generateAccessToken(res, existUser);
     const cookieOption = {
       httpOnly: true,
@@ -366,27 +377,69 @@ export const getStudentAllCourses = asyncHandler(async (req, res) => {
     );
   }
 });
-
-export const getStudentViewCourseDetails = asyncHandler(async (req, res) => {
+export const getAdminCourses = asyncHandler(async (req, res) => {
   try {
-    const { courseId } = req.params;
-    let courseDetails;
-    try {
-      courseDetails = await Course.findById(courseId);
-    } catch (error) {
+    const { _id } = req.info;
+    if (!_id)
+      throw new ApiError({ statusCode: 403, message: "user info missing" });
+    const courses = await User.aggregate([
+      {
+        $match: {
+          _id: new mongoose.Types.ObjectId(_id),
+        },
+      },
+      {
+        $lookup: {
+          from: "courses",
+          localField: "courses",
+          foreignField: "_id",
+          as: "courses",
+          pipeline: [
+            {
+              $lookup: {
+                from: "users",
+                localField: "_id",
+                foreignField: "courses",
+                as: "students",
+              },
+            },
+            {
+              $project: {
+                _id: 1,
+                pricing: 1,
+                title: 1,
+                students: {
+                  $max: [{ $subtract: [{ $size: "$students" }, 1] }, 0],
+                },
+                revenue: {
+                  $multiply: [
+                    { $max: [{ $subtract: [{ $size: "$students" }, 1] }, 0] }, // Adjusted student count
+                    "$pricing",
+                  ],
+                },
+              },
+            },
+          ],
+        },
+      },
+      {
+        $project: {
+          courses: 1,
+        },
+      },
+    ]);
+
+    if (!courses) {
       throw new ApiError({
-        message: "Unable To get The Course Details from DB",
+        message: "Unable to get the Required Courses from db",
         statusCode: 500,
       });
     }
-    if (!courseDetails) {
-      throw new ApiError({ message: "No Course Found", statusCode: 404 });
-    }
     return res.status(200).json(
       new ApiResponse({
-        message: "Successfully Got the Student View Course Details",
+        message: "Successfully got the requested Courses",
         statusCode: 200,
-        data: courseDetails,
+        data: courses[0]?.courses,
       })
     );
   } catch (error) {

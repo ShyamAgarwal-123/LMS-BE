@@ -4,8 +4,8 @@ import Auth from "../middlewares/auth.middlewares.js";
 import {
   editCoverImage,
   editProfileImage,
+  getAdminCourses,
   getStudentAllCourses,
-  getStudentViewCourseDetails,
   getUser,
   logout,
   refreshAccessToken,
@@ -31,7 +31,5 @@ userRouter
 
 userRouter.route("/logout").post(logout);
 userRouter.route("/studentAllCourses").get(getStudentAllCourses);
-userRouter
-  .route("/studentViewCourse/:courseId")
-  .get(getStudentViewCourseDetails);
+userRouter.route("/getAdminCourses").get(getAdminCourses);
 export default userRouter;

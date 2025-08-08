@@ -3,19 +3,16 @@ import ApiError from "../utils/ApiError.js";
 import ApiResponse from "../utils/ApiResponse.js";
 import asyncHandler from "../utils/asyncHandler.js";
 import courseSchema from "../schemas/course.schemas.js";
-import {
-  uploadImageOnCloudinary,
-  deleteImageFromCloudinary,
-} from "../utils/cloudinary.js";
 import User from "../models/user.models.js";
 import mongoose from "mongoose";
+import { deleteS3Object } from "../utils/s3.js";
 
 export const getAllCourses = asyncHandler(async (req, res) => {
   try {
     const {
-      category = [],
-      level = [],
-      primaryLanguage = [],
+      category = "",
+      level = "",
+      primaryLanguage = "",
       sortBy = "price-lowtohigh",
     } = req.query;
     const filters = {
@@ -49,6 +46,8 @@ export const getAllCourses = asyncHandler(async (req, res) => {
         sort.pricing = 1;
         break;
     }
+
+    console.log(filters);
 
     const allCourses = await Course.find(filters).sort(sort);
     if (!allCourses)
@@ -108,6 +107,15 @@ export const createCourse = asyncHandler(async (req, res) => {
         path: validatedInputs.error?.issues?.[0]?.path?.[0],
         statusCode: 400,
       });
+    let instructor;
+    try {
+      instructor = await User.findById(_id);
+    } catch (error) {
+      throw new ApiError({
+        message: "Something Went Wrong While getting The Instructor Details",
+        statusCode: 500,
+      });
+    }
     const course = await Course.create({
       title,
       subtitle,
@@ -119,6 +127,7 @@ export const createCourse = asyncHandler(async (req, res) => {
       primaryLanguage,
       objectives,
       welcomeMessage,
+      instructorName: instructor?.username,
     });
     if (!course)
       throw new ApiError({
@@ -152,25 +161,13 @@ export const uploadCourseThumbnail = asyncHandler(async (req, res) => {
     const { courseId } = req.params;
     if (!courseId)
       throw new ApiError({ message: "CourseId is Required", statusCode: 400 });
-    const { path } = req.file;
-    if (!path)
-      throw new ApiError({
-        message: "Course Thumbnail is Required",
-        statusCode: 400,
-      });
 
-    const { public_id, url } = await uploadImageOnCloudinary(path);
-    if (!public_id && !url)
-      throw new ApiError({
-        message: "Unable To Upload the Upload The Course Tumbnail",
-        statusCode: 500,
-      });
-    try {
-      const course = await Course.findByIdAndUpdate(courseId, {
-        thumbnail_id: public_id,
-        thumbnail: url,
-      });
-    } catch (error) {
+    const { url, key } = req.body;
+    const course = await Course.findByIdAndUpdate(courseId, {
+      thumbnail_s3_key: key,
+      thumbnail: url,
+    });
+    if (!course) {
       throw new ApiError({
         message: "Unable to update Course details",
         statusCode: 500,
@@ -181,8 +178,8 @@ export const uploadCourseThumbnail = asyncHandler(async (req, res) => {
         statusCode: 200,
         message: "Course Thumbanil updated successfully",
         data: {
-          thumbnail: url,
-          thumbnail_id: public_id,
+          imageId: course.thumbnail_s3_key,
+          image: course.thumbnail,
         },
       })
     );
@@ -199,29 +196,28 @@ export const uploadCourseThumbnail = asyncHandler(async (req, res) => {
 export const deleteCourseThumbnail = asyncHandler(async (req, res) => {
   try {
     const { courseId } = req.params;
-    const { publicId } = req.body;
 
-    if (!courseId || !publicId) {
+    if (!courseId) {
       throw new ApiError({
-        message: "courseId and publicId is Required",
+        message: "courseId is Required",
         statusCode: 400,
       });
     }
-    const response = await deleteImageFromCloudinary(publicId);
+    const prevCouse = await Course.findById(courseId);
+
+    const response = await deleteS3Object(prevCouse.thumbnail_s3_key);
     if (!response) {
       throw new ApiError({
         message: "Unable to Delete The Course Thumbnail",
         statusCode: 500,
       });
     }
-    let course;
-    try {
-      course = await Course.findByIdAndUpdate(courseId, {
-        thumbnail:
-          "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcRoeC_2VgaUp-id_Sqlsf0lG1DfmABAF6aTBw&s",
-        thumbnail_id: "",
-      });
-    } catch (error) {
+    const course = await Course.findByIdAndUpdate(courseId, {
+      thumbnail:
+        "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcRoeC_2VgaUp-id_Sqlsf0lG1DfmABAF6aTBw&s",
+      thumbnail_s3_key: undefined,
+    });
+    if (!course) {
       throw new ApiError({
         message: "Unable to update Course Details",
         statusCode: 500,
@@ -235,81 +231,6 @@ export const deleteCourseThumbnail = asyncHandler(async (req, res) => {
           image:
             "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcRoeC_2VgaUp-id_Sqlsf0lG1DfmABAF6aTBw&s",
         },
-      })
-    );
-  } catch (error) {
-    return res.status(error.statusCode || error.http_code || 500).json(
-      new ApiResponse({
-        message: error.message,
-        statusCode: error.statusCode || error.http_code || 500,
-      })
-    );
-  }
-});
-
-export const getAdminCourses = asyncHandler(async (req, res) => {
-  try {
-    const { _id } = req.info;
-    if (!_id)
-      throw new ApiError({ statusCode: 403, message: "user info missing" });
-    const courses = await User.aggregate([
-      {
-        $match: {
-          _id: new mongoose.Types.ObjectId(_id),
-        },
-      },
-      {
-        $lookup: {
-          from: "courses",
-          localField: "courses",
-          foreignField: "_id",
-          as: "courses",
-          pipeline: [
-            {
-              $lookup: {
-                from: "users",
-                localField: "_id",
-                foreignField: "courses",
-                as: "students",
-              },
-            },
-            {
-              $project: {
-                _id: 1,
-                pricing: 1,
-                title: 1,
-                students: {
-                  $max: [{ $subtract: [{ $size: "$students" }, 1] }, 0],
-                },
-                revenue: {
-                  $multiply: [
-                    { $max: [{ $subtract: [{ $size: "$students" }, 1] }, 0] }, // Adjusted student count
-                    "$pricing",
-                  ],
-                },
-              },
-            },
-          ],
-        },
-      },
-      {
-        $project: {
-          courses: 1,
-        },
-      },
-    ]);
-
-    if (!courses) {
-      throw new ApiError({
-        message: "Unable to get the Required Courses from db",
-        statusCode: 500,
-      });
-    }
-    return res.status(200).json(
-      new ApiResponse({
-        message: "Successfully got the requested Courses",
-        statusCode: 200,
-        data: courses[0]?.courses,
       })
     );
   } catch (error) {
@@ -345,10 +266,9 @@ export const getCourse = asyncHandler(async (req, res) => {
             {
               $project: {
                 title: 1,
-                videoUrl: 1,
                 _id: 1,
                 freePreview: 1,
-                public_id: 1,
+                s3Key: 1,
               },
             },
           ],
@@ -435,22 +355,51 @@ export const togglePublish = asyncHandler(async (req, res) => {
         statusCode: 400,
       });
     }
-    let updateCourse;
+
+    let course;
     try {
-      updateCourse = await Course.findByIdAndUpdate(courseId, {
-        isPublished,
-      });
+      course = await Course.findById(courseId).populate("videos_id");
     } catch (error) {
       throw new ApiError({
-        message: "Unable to toggle isPublished by DB",
+        message: "unable to find course in DB",
         statusCode: 500,
       });
     }
+    if (!course) {
+      throw new ApiError({
+        message: "No Course Found with provided course_id",
+        statusCode: 400,
+      });
+    }
+    if (isPublished) {
+      // Check if course has any videos at all
+      if (!course.videos_id || !course.videos_id.length) {
+        throw new ApiError({
+          message: "Course must have at least one video to be published",
+          statusCode: 400,
+        });
+      }
+
+      const videos = course.videos_id.filter((video) => video.freePreview);
+      if (!videos.length) {
+        throw new ApiError({
+          message: "At least one uploaded Video Should be Free",
+          statusCode: 400,
+        });
+      }
+    }
+
+    course.isPublished = isPublished;
+    await course.save({ validateBeforeSave: false });
+
     return res.status(200).json(
       new ApiResponse({
-        message: "isPublished Successfully is Toggled",
+        message: "Course publish status successfully toggled",
         statusCode: 200,
-        data: updateCourse,
+        data: {
+          courseId: course._id,
+          isPublished: course.isPublished,
+        },
       })
     );
   } catch (error) {
