@@ -114,7 +114,9 @@ export const getUser = asyncHandler(async (req, res) => {
     const { _id } = req.info;
     if (!_id)
       throw new ApiError({ statusCode: 403, message: "user info missing" });
-    const existUser = await User.findById(_id);
+    const existUser = await User.findById(_id).select(
+      "-createdAt -password -refreshToken -updatedAt -__v"
+    );
     if (!existUser)
       throw new ApiError({
         statusCode: 500,
