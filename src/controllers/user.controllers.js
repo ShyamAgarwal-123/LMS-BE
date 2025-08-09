@@ -409,6 +409,7 @@ export const getAdminCourses = asyncHandler(async (req, res) => {
               $project: {
                 _id: 1,
                 pricing: 1,
+                isPublished: 1,
                 title: 1,
                 students: {
                   $max: [{ $subtract: [{ $size: "$students" }, 1] }, 0],
